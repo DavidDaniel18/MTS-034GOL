@@ -12,6 +12,10 @@ public class RouteTimeProviderClient : IRouteTimeProvider
 {
     private readonly IInfiniteRetryPolicy<RouteTimeProviderClient> _infiniteRetry;
 
+    private const string FilePath = "/app/data/carTimeFile.txt";
+
+    private int? _savedTravelTimeInSeconds;
+
     public RouteTimeProviderClient(IInfiniteRetryPolicy<RouteTimeProviderClient> infiniteRetry)
     {
         _infiniteRetry = infiniteRetry;
@@ -38,7 +42,7 @@ public class RouteTimeProviderClient : IRouteTimeProvider
                         Value = destinationCoordinates
                     },
                 },
-                Mode = LoadBalancingMode.Broadcast
+                Mode = LoadBalancingMode.RoundRobin
             });
 
             var times = new List<int>();
@@ -48,8 +52,36 @@ public class RouteTimeProviderClient : IRouteTimeProvider
                 times.Add(JsonConvert.DeserializeObject<int>(result.Content));
             }
 
-            return (int)times.Average();
+            var average = (int)times.Average();
+
+            WriteIntegerToFile(average);
+
+            _savedTravelTimeInSeconds = average;
+
+            return average;
         });
+    }
+
+    public int GetSavedTravelTimeInSeconds()
+    {
+        return _savedTravelTimeInSeconds ??= ReadIntegerFromFile();
+    }
+
+    static void WriteIntegerToFile(int number)
+    {
+        File.WriteAllText(FilePath, number.ToString());
+    }
+
+    static int ReadIntegerFromFile()
+    {
+        var content = File.ReadAllText(FilePath);
+
+        if (int.TryParse(content, out var result))
+        {
+            return result;
+        }
+
+        throw new Exception($"Could not parse {content} to an integer");
     }
 }
 

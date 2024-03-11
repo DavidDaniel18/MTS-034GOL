@@ -3,4 +3,5 @@
 public interface IRouteTimeProvider
 {
     Task<int> GetTravelTimeInSeconds(string startingCoordinates, string destinationCoordinates);
+    int GetSavedTravelTimeInSeconds();
 }

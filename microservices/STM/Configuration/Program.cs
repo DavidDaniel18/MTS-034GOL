@@ -16,6 +16,8 @@ using Application.QueryServices;
 using Application.QueryServices.ServiceInterfaces;
 using Configuration.Dispatchers;
 using Configuration.Policies;
+using Contracts;
+using Controllers.Events;
 using Controllers.Jobs;
 using Controllers.Rest;
 using Domain.Common;
@@ -30,17 +32,22 @@ using Infrastructure.FileHandlers.StaticGtfs;
 using Infrastructure.FileHandlers.StaticGtfs.Mappers.TypeConverter;
 using Infrastructure.FileHandlers.StaticGtfs.Processor;
 using Infrastructure.ReadRepositories;
+using Infrastructure.TcpClients;
 using Infrastructure.WriteRepositories;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.OpenApi.Models;
+using RabbitMQ.Client;
+using ServiceMeshHelper;
+using ServiceMeshHelper.Controllers;
+using MassTransit;
 
 namespace Configuration;
 
 public class Program
 {
-    public static readonly bool UseInMemoryDatabase = true;
+    public static readonly bool UseInMemoryDatabase = false;
 
     private static readonly InMemoryDatabaseRoot DatabaseRoot = new();
 
@@ -53,7 +60,7 @@ public class Program
     public static Action<IServiceCollection> Domain { get; set; } = DomainSetup;
 
     //this is a quick start configuration, it should use dynamic values
-    private const int DbPort = 00000;
+    private const int DbPort = 32572;
     private const string DbUsername = "postgres";
     private const string DbPassword = "secret";
     private const string DatabaseName = "STM";
@@ -115,6 +122,8 @@ public class Program
 
     public static void ConfigureServices(IServiceCollection services, IConfiguration builderConfiguration)
     {
+        ConfigureMassTransit(services);
+
         Domain(services);
         Application(services);
         Infrastructure(services, builderConfiguration);
@@ -146,7 +155,6 @@ public class Program
         services.AddHostedService<BusUpdateJob>();
         services.AddHostedService<UpdateTripsJob>();
         services.AddHostedService<LoadStaticGtfsJob>();
-        services.AddHostedService<RideTrackingJob>();
         services.AddHostedService<InitializationHealthJob>();
     }
 
@@ -182,8 +190,9 @@ public class Program
         services.AddScoped<GtfsTimespanConverter>();
         services.AddSingleton<IMemoryConsumptionSettings, MemoryConsumptionSettings>(_ => new MemoryConsumptionSettings(hostInfo.GetMemoryConsumption()));
 
-        services.AddSingleton<IConsumer, InMemoryEventQueue>();
+        services.AddSingleton<IEventConsumer, InMemoryEventQueue>();
         services.AddSingleton<IEventPublisher, InMemoryEventQueue>();
+        services.AddSingleton<IMassTransitPublisher, MassTransitPublisher>();
     }
 
     private static void ApplicationSetup(IServiceCollection services)
@@ -234,6 +243,50 @@ public class Program
                 .AddClasses(filter => filter.AssignableTo(type))
                 .AsImplementedInterfaces()
                 .WithLifetime(lifetime);
+        });
+    }
+
+    private static void ConfigureMassTransit(IServiceCollection services)
+    {
+        var routingData = RestController.GetAddress("EventStream", LoadBalancingMode.RoundRobin).Result.First();
+
+        var uniqueQueueName = "STM";
+
+        services.AddMassTransit(x =>
+        {
+            x.AddConsumer<UpdateBusPositionCompletedConsumer>();
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host($"rabbitmq://{routingData.Host}:{routingData.Port}", c =>
+                {
+                    c.RequestedConnectionTimeout(100);
+                    c.Heartbeat(TimeSpan.FromMilliseconds(50));
+                });
+
+                cfg.Message<ApplicationRideTrackingUpdated>(topologyConfigurator => topologyConfigurator.SetEntityName("ride_tracking_updated"));
+                
+                cfg.Message<BusPositionsUpdateCompleted>(topologyConfigurator => topologyConfigurator.SetEntityName("bus_position_update_completed"));
+
+                cfg.ReceiveEndpoint(uniqueQueueName, endpoint =>
+                {
+                    endpoint.ConfigureConsumeTopology = false;
+
+                    endpoint.Bind<BusPositionsUpdateCompleted>(binding =>
+                    {
+                        binding.ExchangeType = ExchangeType.Topic;
+                        binding.RoutingKey = "stm.update.completed";
+                    });
+
+                    endpoint.ConfigureConsumer<UpdateBusPositionCompletedConsumer>(context);
+
+                    endpoint.SingleActiveConsumer = true;
+                    
+                    endpoint.PrefetchCount = 60;
+                });
+
+                cfg.Publish<ApplicationRideTrackingUpdated>(p => p.ExchangeType = ExchangeType.Topic);
+            });
         });
     }
 }

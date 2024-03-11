@@ -1,7 +1,6 @@
-﻿using System.Threading.Channels;
-using Application.BusinessObjects;
-using Application.DTO;
-using Application.Interfaces;
+﻿using Application.Interfaces;
+using Contracts;
+using MqContracts;
 
 namespace Application.Usecases
 {
@@ -13,12 +12,6 @@ namespace Application.Usecases
 
         private readonly IDataStreamWriteModel _dataStreamWriteModel;
 
-        //This is a very aggressive polling rate, is there a better way to do this?
-        private readonly PeriodicTimer _periodicTimer = new(TimeSpan.FromMilliseconds(50));
-
-        private int _averageCarTravelTime;
-
-        private RideDto? _optimalBus;
 
         public CompareTimes(IRouteTimeProvider routeTimeProvider, IBusInfoProvider iBusInfoProvider, IDataStreamWriteModel dataStreamWriteModel)
         {
@@ -27,64 +20,24 @@ namespace Application.Usecases
             _dataStreamWriteModel = dataStreamWriteModel;
         }
 
-        public async Task<Channel<IBusPositionUpdated>> BeginComparingBusAndCarTime(string startingCoordinates, string destinationCoordinates)
+        public async Task BeginComparingBusAndCarTime(string startingCoordinates, string destinationCoordinates)
         {
             await Task.WhenAll(
-                _routeTimeProvider.GetTravelTimeInSeconds(startingCoordinates, destinationCoordinates)
-                    .ContinueWith(task => _averageCarTravelTime = task.Result),
-
+                _routeTimeProvider.GetTravelTimeInSeconds(startingCoordinates, destinationCoordinates),
                 _iBusInfoProvider.GetBestBus(startingCoordinates, destinationCoordinates)
-                    .ContinueWith(task =>
-                    {
-                        _optimalBus = task.Result;
-
-                        return _iBusInfoProvider.BeginTracking(_optimalBus);
-                    })
-                );
-
-            if (_optimalBus is null || _averageCarTravelTime < 1)
-            {
-                throw new Exception("bus or car data was null");
-            }
-
-            var channel = Channel.CreateUnbounded<IBusPositionUpdated>();
-
-            return channel;
+                    .ContinueWith(task => _iBusInfoProvider.BeginTracking(task.Result)));
         }
 
-        //Is polling ideal?
-        public async Task PollTrackingUpdate(ChannelWriter<IBusPositionUpdated> channel)
+        public async Task WriteUpdate(ApplicationRideTrackingUpdated positionUpdated)
         {
-            if (_optimalBus is null) throw new Exception("bus data was null");
+            positionUpdated.Message += $"\nCar: {_routeTimeProvider.GetSavedTravelTimeInSeconds()} seconds";
 
-            var trackingOnGoing = true;
-
-            while (trackingOnGoing && await _periodicTimer.WaitForNextTickAsync())
+            await _dataStreamWriteModel.Produce(new BusPositionUpdated()
             {
-                var trackingResult = await _iBusInfoProvider.GetTrackingUpdate();
-
-                if (trackingResult is null) continue;
-
-                trackingOnGoing = !trackingResult.TrackingCompleted;
-
-                var busPosition = new BusPosition()
-                {
-                    Message = trackingResult.Message + $"\nCar: {_averageCarTravelTime} seconds",
-                    Seconds = trackingResult.Duration,
-                };
-
-                await channel.WriteAsync(busPosition);
-            }
-
-            channel.Complete();
-        }
-
-        public async Task WriteToStream(ChannelReader<IBusPositionUpdated> channelReader)
-        {
-            await foreach (var busPositionUpdated in channelReader!.ReadAllAsync())
-            {
-                await _dataStreamWriteModel.Produce(busPositionUpdated);
-            }
+                Message = positionUpdated.Message,
+                Seconds = positionUpdated.Duration,
+            }, positionUpdated.Delta,
+                positionUpdated.Id);
         }
     }
 }

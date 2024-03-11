@@ -1,4 +1,5 @@
 ﻿using Application.Interfaces;
+using Contracts;
 using MassTransit;
 using MqContracts;
 
@@ -13,19 +14,21 @@ public class MassTransitRabbitMqClient : IDataStreamWriteModel
         _publishEndpoint = publishEndpoint;
     }
 
-    public async Task Produce(IBusPositionUpdated busPositionUpdated)
+    public async Task Produce(BusPositionUpdated busPositionUpdated, DateTime delta, Guid positionUpdatedId)
     {
         try
         {
-            await _publishEndpoint.Publish(new BusPositionUpdated()
-            {
-                Message = busPositionUpdated.Message,
-                Seconds = busPositionUpdated.Seconds,
-            },
+            await _publishEndpoint.Publish(busPositionUpdated,
             x =>
-            {
+            {   
                 x.SetRoutingKey("trip_comparison.response");
-            }, new CancellationTokenSource(TimeSpan.FromMilliseconds(100)).Token);
+            });
+
+            await _publishEndpoint.Publish(new BusPositionsUpdateCompleted(positionUpdatedId, DateTime.UtcNow, delta),
+                x =>
+            {
+                x.SetRoutingKey("stm.update.completed");
+            });
         }
         catch
         {

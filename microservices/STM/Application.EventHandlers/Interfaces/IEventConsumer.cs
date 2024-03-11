@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.EventHandlers.Interfaces;
 
-public interface IConsumer
+public interface IEventConsumer
 {
     Task<TMessage> ConsumeNext<TMessage>(CancellationToken token = default) where TMessage : class;
 

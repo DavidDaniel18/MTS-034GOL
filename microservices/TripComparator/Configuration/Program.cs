@@ -2,6 +2,7 @@ using Application.Interfaces;
 using Application.Interfaces.Policies;
 using Application.Usecases;
 using Configuration.Policies;
+using Contracts;
 using Controllers.Controllers;
 using Infrastructure.Clients;
 using MassTransit;
@@ -50,7 +51,7 @@ namespace Configuration
         {
             ConfigureMassTransit(services);
 
-            services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(typeof(CompareTripController).Assembly));
+            services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(typeof(TripComparatorMqController).Assembly));
 
             services.AddEndpointsApiExplorer();
 
@@ -81,11 +82,12 @@ namespace Configuration
             
             var routingData = RestController.GetAddress(hostInfo.GetMQServiceName(), LoadBalancingMode.RoundRobin).Result.First();
 
-            var uniqueQueueName = $"time_comparison.node_controller-to-any.query.{Guid.NewGuid()}";
+            var uniqueQueueName = "TripComparator";
 
             services.AddMassTransit(x =>
             {
                 x.AddConsumer<TripComparatorMqController>();
+                x.AddConsumer<RideTrackingUpdatedMqController>();
 
                 x.UsingRabbitMq((context, cfg) =>
                 {
@@ -93,13 +95,15 @@ namespace Configuration
                     {
                         c.RequestedConnectionTimeout(100);
                         c.Heartbeat(TimeSpan.FromMilliseconds(50));
-                        c.PublisherConfirmation = true;
                     });
 
-                    cfg.Message<BusPositionUpdated>(topologyConfigurator => topologyConfigurator.SetEntityName("bus_position_updated"));
                     cfg.Message<CoordinateMessage>(topologyConfigurator => topologyConfigurator.SetEntityName("coordinate_message"));
+                    cfg.Message<ApplicationRideTrackingUpdated>(topologyConfigurator => topologyConfigurator.SetEntityName("ride_tracking_updated"));
 
-                    cfg.ReceiveEndpoint(uniqueQueueName, endpoint =>
+                    cfg.Message<BusPositionUpdated>(topologyConfigurator => topologyConfigurator.SetEntityName("bus_position_updated"));
+                    cfg.Message<BusPositionsUpdateCompleted>(topologyConfigurator => topologyConfigurator.SetEntityName("bus_position_update_completed"));
+
+                    cfg.ReceiveEndpoint(uniqueQueueName + "Coordinate_Message", endpoint =>
                     {
                         endpoint.ConfigureConsumeTopology = false;
 
@@ -110,9 +114,29 @@ namespace Configuration
                         });
 
                         endpoint.ConfigureConsumer<TripComparatorMqController>(context);
+
+                        endpoint.SingleActiveConsumer = true;
+                        endpoint.PrefetchCount = 1;
+                    });
+
+                    cfg.ReceiveEndpoint(uniqueQueueName + "Ride_Update", endpoint =>
+                    {
+                        endpoint.ConfigureConsumeTopology = false;
+
+                        endpoint.Bind<ApplicationRideTrackingUpdated>(binding =>
+                        {
+                            binding.ExchangeType = ExchangeType.Topic;
+                            binding.RoutingKey = "Stm.RideTrackingUpdated";
+                        });
+
+                        endpoint.ConfigureConsumer<RideTrackingUpdatedMqController>(context);
+
+                        endpoint.SingleActiveConsumer = true;
+                        endpoint.PrefetchCount = 1;
                     });
 
                     cfg.Publish<BusPositionUpdated>(p => p.ExchangeType = ExchangeType.Topic);
+                    cfg.Publish<BusPositionsUpdateCompleted>(p => p.ExchangeType = ExchangeType.Topic);
                 });
             });
         }

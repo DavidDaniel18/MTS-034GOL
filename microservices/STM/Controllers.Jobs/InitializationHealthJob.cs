@@ -29,7 +29,7 @@ public class InitializationHealthJob : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
 
-        var consumer = scope.ServiceProvider.GetRequiredService<IConsumer>();
+        var consumer = scope.ServiceProvider.GetRequiredService<IEventConsumer>();
 
         var publisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
         

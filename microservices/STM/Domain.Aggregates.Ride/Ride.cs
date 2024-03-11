@@ -32,7 +32,7 @@ public sealed class Ride : Aggregate<Ride>
 
     public DateTime? DepartureReachedTime { get; private set; }
 
-    public void UpdateRide(RideUpdateInfo rideUpdateInfo, IDatetimeProvider datetimeProvider)
+    public void UpdateRide(RideUpdateInfo rideUpdateInfo, IDatetimeProvider datetimeProvider, DateTime delta)
     {
         if(TrackingComplete) throw new InvalidOperationException("Tracking is already complete");
 
@@ -46,7 +46,7 @@ public sealed class Ride : Aggregate<Ride>
 
         TrackingComplete = rideUpdateInfo.CurrentStopIndex >= rideUpdateInfo.TargetStopIndex;
 
-        var trackingUpdatedEvent = new RideTrackingUpdated(message, TrackingComplete, _trackingStrategy.GetDuration());
+        var trackingUpdatedEvent = new RideTrackingUpdated(message, TrackingComplete, _trackingStrategy.GetDuration(), delta);
 
         RaiseDomainEvent(trackingUpdatedEvent);
     }
@@ -55,7 +55,7 @@ public sealed class Ride : Aggregate<Ride>
     {
         TrackingComplete = true;
 
-        var trackingUpdatedEvent = new RideTrackingUpdated("Tracking completed by exception, see logs for more info", TrackingComplete, (datetimeProvider.GetCurrentTime() - TripBegunTime).TotalSeconds);
+        var trackingUpdatedEvent = new RideTrackingUpdated("Tracking completed by exception, see logs for more info", TrackingComplete, (datetimeProvider.GetCurrentTime() - TripBegunTime).TotalSeconds, DateTime.UtcNow);
 
         RaiseDomainEvent(trackingUpdatedEvent);
     }

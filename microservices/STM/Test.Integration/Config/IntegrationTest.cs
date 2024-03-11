@@ -12,7 +12,7 @@ namespace Tests.Integration.Config;
 public abstract class IntegrationTest
 {
     protected readonly ICommandDispatcher CommandDispatcher;
-    protected readonly IConsumer Consumer;
+    protected readonly IEventConsumer EventConsumer;
     protected readonly ITestOutputHelper OutputHelper;
     protected readonly IQueryDispatcher QueryDispatcher;
 
@@ -28,7 +28,7 @@ public abstract class IntegrationTest
 
         QueryDispatcher = scope.ServiceProvider.GetRequiredService<IQueryDispatcher>();
         CommandDispatcher = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();
-        Consumer = scope.ServiceProvider.GetRequiredService<IConsumer>();
+        EventConsumer = scope.ServiceProvider.GetRequiredService<IEventConsumer>();
         var readDbContext = scope.ServiceProvider.GetRequiredService<AppReadDbContext>();
         var eventDbContext = scope.ServiceProvider.GetRequiredService<EventDbContext>();
 

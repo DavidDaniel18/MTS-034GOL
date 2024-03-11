@@ -24,7 +24,7 @@ public class TrackBusTests : IntegrationTest
     {
         var cancellationToken = new CancellationTokenSource(TimeSpan.FromSeconds(240));
 
-        await Consumer.ConsumeNext<ServiceInitialized>(cancellationToken.Token);
+        await EventConsumer.ConsumeNext<ServiceInitialized>(cancellationToken.Token);
 
         var initialPosition = new Position(45.50805689530107, -73.57132679709797);
 
@@ -52,7 +52,7 @@ public class TrackBusTests : IntegrationTest
 
         var cancellationTokenRide = new CancellationTokenSource(TimeSpan.FromSeconds(10));
 
-        var update = await Consumer.ConsumeNext<ApplicationRideTrackingUpdated>(cancellationTokenRide.Token);
+        var update = await EventConsumer.ConsumeNext<ApplicationRideTrackingUpdated>(cancellationTokenRide.Token);
 
         OutputHelper.WriteLine(update.Message);
 

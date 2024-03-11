@@ -6,6 +6,7 @@ using Domain.Common.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ServiceMeshHelper.Controllers;
 
 namespace Controllers.Jobs;
 
@@ -28,13 +29,18 @@ public class UpdateTripsJob : BackgroundService
     {
         try
         {
+            var hostname = await ServiceMeshInfoProvider.PodLeaderReplicaHostname;
+
+            // If the hostname contains a digit, it's a replica and update trips
+            if (hostname.Any(char.IsDigit)) return;
+
             using var scope = _serviceProvider.CreateScope();
 
             var commandDispatcher = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();
 
             var publisher = scope.ServiceProvider.GetRequiredService<IEventPublisher>();
 
-            var consumer = scope.ServiceProvider.GetRequiredService<IConsumer>();
+            var consumer = scope.ServiceProvider.GetRequiredService<IEventConsumer>();
           
             var eventContext = scope.ServiceProvider.GetRequiredService<IEventContext>();
 

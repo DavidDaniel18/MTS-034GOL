@@ -7,6 +7,7 @@ using Domain.Common.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ServiceMeshHelper.Controllers;
 
 namespace Controllers.Jobs;
 
@@ -30,6 +31,11 @@ public class LoadStaticGtfsJob : BackgroundService
     {
         try
         {
+            var hostname = await ServiceMeshInfoProvider.PodLeaderReplicaHostname;
+
+            // If the hostname contains a digit, it's a replica and should not load the static GTFS
+            if (hostname.Any(char.IsDigit)) return;
+
             using var scope = _serviceProvider.CreateScope();
 
             var commandDispatcher = scope.ServiceProvider.GetRequiredService<ICommandDispatcher>();

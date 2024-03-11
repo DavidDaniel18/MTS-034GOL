@@ -5,6 +5,7 @@ using Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ServiceMeshHelper.Controllers;
 
 namespace Controllers.Jobs;
 
@@ -25,9 +26,14 @@ public class BusUpdateJob : BackgroundService
     {
         try
         {
+            var hostname = await ServiceMeshInfoProvider.PodLeaderReplicaHostname;
+
+            // If the hostname contains a digit, it's a replica and should not update bus positions
+            if (hostname.Any(char.IsDigit)) return;
+
             var initialScope = _serviceProvider.CreateScope();
 
-            var consumer = initialScope.ServiceProvider.GetRequiredService<IConsumer>();
+            var consumer = initialScope.ServiceProvider.GetRequiredService<IEventConsumer>();
 
             await consumer.ConsumeNext<ServiceInitialized>(stoppingToken);
 

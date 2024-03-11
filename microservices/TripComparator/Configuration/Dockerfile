@@ -1,9 +1,13 @@
 #See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-USER app
 WORKDIR /app
 EXPOSE 8080
+
+# Copy the entrypoint script and grant execution permissions before switching to the app user
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh && \
+    chown app:app /entrypoint.sh
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
@@ -24,4 +28,5 @@ RUN dotnet publish "./Configuration.csproj" -c $BUILD_CONFIGURATION -o /app/publ
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "Configuration.dll"]
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["dotnet", "Configuration.dll"]

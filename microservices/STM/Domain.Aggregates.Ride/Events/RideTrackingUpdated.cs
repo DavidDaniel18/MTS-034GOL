@@ -2,4 +2,4 @@
 
 namespace Domain.Aggregates.Ride.Events;
 
-public readonly record struct RideTrackingUpdated(string Message, bool TrackingCompleted, double Duration) : IDomainEvent;
+public readonly record struct RideTrackingUpdated(string Message, bool TrackingCompleted, double Duration, DateTime delta) : IDomainEvent;

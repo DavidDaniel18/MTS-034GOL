@@ -20,7 +20,7 @@ public class RideServices
         return RideFactory.Create(bus.Id, trip.GetStopIdByIndex(bus.CurrentStopIndex), departureId, destinationId, _datetimeProvider);
     }
 
-    public void UpdateRide(Ride ride, Bus bus, Trip trip)
+    public void UpdateRide(Ride ride, Bus bus, Trip trip, DateTime commandDelta)
     {
         trip.ValidateStopIndex(bus.CurrentStopIndex);
 
@@ -31,7 +31,8 @@ public class RideServices
                 trip.GetIndexOfStop(ride.DepartureId),
                 trip.GetIndexOfStop(ride.DestinationId),
                 bus.Name), 
-            _datetimeProvider);
+            _datetimeProvider,
+            commandDelta);
     }
 
     public void CompleteTracking(Ride ride)

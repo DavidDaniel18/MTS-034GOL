@@ -45,7 +45,7 @@ public class UpdateRidesTrackingHandler : ICommandHandler<UpdateRidesTrackingCom
 
                     var trip = await _tripRepository.GetAsync(bus.TripId);
 
-                    _rideServices.UpdateRide(ride, bus, trip);
+                    _rideServices.UpdateRide(ride, bus, trip, command.Delta);
                 }
                 catch (Exception e) when(e is IndexOutsideOfTripException or KeyNotFoundException)
                 {

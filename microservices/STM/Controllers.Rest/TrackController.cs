@@ -1,5 +1,6 @@
 ﻿using Application.Commands.Seedwork;
 using Application.Commands.TrackBus;
+using Application.Commands.UpdateRidesTracking;
 using Application.EventHandlers.Interfaces;
 using Contracts;
 using Microsoft.AspNetCore.Mvc;
@@ -12,14 +13,14 @@ namespace Controllers.Rest;
 public class TrackController : ControllerBase
 {
     private readonly ICommandDispatcher _commandDispatcher;
-    private readonly IConsumer _consumer;
+    private readonly IEventConsumer _eventConsumer;
     private readonly ILogger<TrackController> _logger;
 
-    public TrackController(ILogger<TrackController> logger, ICommandDispatcher commandDispatcher, IConsumer consumer)
+    public TrackController(ILogger<TrackController> logger, ICommandDispatcher commandDispatcher, IEventConsumer eventConsumer)
     {
         _logger = logger;
         _commandDispatcher = commandDispatcher;
-        _consumer = consumer;
+        _eventConsumer = eventConsumer;
     }
 
     [HttpPost]
@@ -29,6 +30,10 @@ public class TrackController : ControllerBase
         _logger.LogInformation("TrackBus endpoint reached");
 
         await _commandDispatcher.DispatchAsync(trackBusCommand, CancellationToken.None);
+
+        var updateRideCommand = new UpdateRidesTrackingCommand(DateTime.UtcNow);
+
+        await _commandDispatcher.DispatchAsync(updateRideCommand, CancellationToken.None);
 
         return Accepted();
     }
@@ -45,7 +50,7 @@ public class TrackController : ControllerBase
 
         try
         {
-            var update = await _consumer.ConsumeNext<ApplicationRideTrackingUpdated>(new CancellationTokenSource(timeoutInMs).Token);
+            var update = await _eventConsumer.ConsumeNext<ApplicationRideTrackingUpdated>(new CancellationTokenSource(timeoutInMs).Token);
 
             return Ok(update);
         }

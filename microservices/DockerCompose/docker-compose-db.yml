@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  event-store:
+    container_name: EventStream
+    image: cluster_mq
+    restart: always
+    hostname: EventStream
+    build:
+      context: ../ClusterRabbitMq/
+      dockerfile: Dockerfile
+    ports:
+      - '32771:5672'
+      - '30001:15672'
+      - '25673:25672'
+    environment:
+      ID: EventStream
+      RABBITMQ_ERLANG_COOKIE_FILE: /var/lib/rabbitmq/.erlang.cookie
+    labels:
+      Artifact_Category: Connector
+      Replicas: EventStream
+  
+  stm-db:
+    image: postgres:latest
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: secret
+      ID: StmDb
+    labels:
+        Artifact_Category: Database
+    ports:
+      - '32572:5432'
+    volumes:
+      - 'stm-db:/var/lib/postgresql/data'
+volumes:
+  stm-db: null

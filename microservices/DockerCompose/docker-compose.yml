@@ -24,25 +24,6 @@ services:
     volumes: 
       - /var/run/docker.sock:/var/run/docker.sock
 
-  event-store:
-    container_name: EventStream
-    image: cluster_mq
-    restart: always
-    hostname: EventStream
-    build:
-      context: ../ClusterRabbitMq/
-      dockerfile: Dockerfile
-    ports:
-      - '32771:5672'
-      - '30001:15672'
-      - '25673:25672'
-    environment:
-      ID: EventStream
-      RABBITMQ_ERLANG_COOKIE_FILE: /var/lib/rabbitmq/.erlang.cookie
-    labels:
-      Artifact_Category: Connector
-      Replicas: EventStream
-
   routetimeprovider:
     container_name: RouteTimeProvider
     image: routetimeprovider
@@ -59,11 +40,13 @@ services:
       - '32772:8080'
     labels:
       ARTIFACT_CATEGORY: Computation
+      Replicas: 4
 
   tripcomparator:
     container_name: TripComparator
     image: tripcomparator
     restart: always
+    hostname: TripComparator
     build:
       context: ../TripComparator
       dockerfile: /Configuration/Dockerfile
@@ -76,11 +59,16 @@ services:
       - '32773:8080'
     labels:
       ARTIFACT_CATEGORY: Computation
+      Replicas: TripComparator, TripComparator2, TripComparator3
+      SHARE_VOLUMES: True
+    volumes:
+      - "trip-file-mem:/app/data"
 
   stm:
     container_name: STM
     image: stm
     restart: always
+    hostname: STM
     build:
       context: ../STM
       dockerfile: /Configuration/Dockerfile
@@ -95,3 +83,6 @@ services:
       - '32774:8080'
     labels:
       ARTIFACT_CATEGORY: Computation
+      Replicas: STM, STM2, STM3
+volumes:
+  trip-file-mem: null
