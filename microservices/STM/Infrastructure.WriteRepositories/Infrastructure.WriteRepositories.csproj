@@ -15,6 +15,7 @@
     <ProjectReference Include="..\Application.CommandServices\Application.CommandServices.csproj" />
     <ProjectReference Include="..\Application.Common\Application.Common.csproj" />
     <ProjectReference Include="..\Application.Dtos\Application.Dtos.csproj" />
+    <ProjectReference Include="..\Application.EventHandlers\Application.EventHandlers.csproj" />
   </ItemGroup>
 
 </Project>

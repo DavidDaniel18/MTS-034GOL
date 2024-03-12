@@ -261,7 +261,8 @@ public class Program
                 cfg.Host($"rabbitmq://{routingData.Host}:{routingData.Port}", c =>
                 {
                     c.RequestedConnectionTimeout(100);
-                    c.Heartbeat(TimeSpan.FromMilliseconds(50));
+                    c.Heartbeat(TimeSpan.FromMilliseconds(10));
+                    c.PublisherConfirmation = true;
                 });
 
                 cfg.Message<ApplicationRideTrackingUpdated>(topologyConfigurator => topologyConfigurator.SetEntityName("ride_tracking_updated"));
@@ -279,10 +280,9 @@ public class Program
                     });
 
                     endpoint.ConfigureConsumer<UpdateBusPositionCompletedConsumer>(context);
-
-                    endpoint.SingleActiveConsumer = true;
                     
-                    endpoint.PrefetchCount = 60;
+                    endpoint.SingleActiveConsumer = true;
+                    endpoint.PrefetchCount = 1;
                 });
 
                 cfg.Publish<ApplicationRideTrackingUpdated>(p => p.ExchangeType = ExchangeType.Topic);

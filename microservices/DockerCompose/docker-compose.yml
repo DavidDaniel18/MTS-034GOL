@@ -40,7 +40,6 @@ services:
       - '32772:8080'
     labels:
       ARTIFACT_CATEGORY: Computation
-      Replicas: 4
 
   tripcomparator:
     container_name: TripComparator

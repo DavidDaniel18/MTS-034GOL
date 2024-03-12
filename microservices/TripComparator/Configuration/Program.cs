@@ -94,7 +94,8 @@ namespace Configuration
                     cfg.Host($"rabbitmq://{ routingData.Host }:{routingData.Port}", c =>
                     {
                         c.RequestedConnectionTimeout(100);
-                        c.Heartbeat(TimeSpan.FromMilliseconds(50));
+                        c.Heartbeat(TimeSpan.FromMilliseconds(10));
+                        c.PublisherConfirmation = true;
                     });
 
                     cfg.Message<CoordinateMessage>(topologyConfigurator => topologyConfigurator.SetEntityName("coordinate_message"));
@@ -102,22 +103,6 @@ namespace Configuration
 
                     cfg.Message<BusPositionUpdated>(topologyConfigurator => topologyConfigurator.SetEntityName("bus_position_updated"));
                     cfg.Message<BusPositionsUpdateCompleted>(topologyConfigurator => topologyConfigurator.SetEntityName("bus_position_update_completed"));
-
-                    cfg.ReceiveEndpoint(uniqueQueueName + "Coordinate_Message", endpoint =>
-                    {
-                        endpoint.ConfigureConsumeTopology = false;
-
-                        endpoint.Bind<CoordinateMessage>(binding =>
-                        {
-                            binding.ExchangeType = ExchangeType.Topic;
-                            binding.RoutingKey = "trip_comparison.query";
-                        });
-
-                        endpoint.ConfigureConsumer<TripComparatorMqController>(context);
-
-                        endpoint.SingleActiveConsumer = true;
-                        endpoint.PrefetchCount = 1;
-                    });
 
                     cfg.ReceiveEndpoint(uniqueQueueName + "Ride_Update", endpoint =>
                     {
@@ -132,7 +117,21 @@ namespace Configuration
                         endpoint.ConfigureConsumer<RideTrackingUpdatedMqController>(context);
 
                         endpoint.SingleActiveConsumer = true;
-                        endpoint.PrefetchCount = 1;
+                    });
+
+                    cfg.ReceiveEndpoint(uniqueQueueName + "Coordinate_Message", endpoint =>
+                    {
+                        endpoint.ConfigureConsumeTopology = false;
+
+                        endpoint.Bind<CoordinateMessage>(binding =>
+                        {
+                            binding.ExchangeType = ExchangeType.Topic;
+                            binding.RoutingKey = "trip_comparison.query";
+                        });
+
+                        endpoint.ConfigureConsumer<TripComparatorMqController>(context);
+
+                        endpoint.SingleActiveConsumer = true;
                     });
 
                     cfg.Publish<BusPositionUpdated>(p => p.ExchangeType = ExchangeType.Topic);

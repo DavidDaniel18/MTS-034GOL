@@ -25,6 +25,7 @@ public sealed class EventDbContext : DbContext, IEventContext
     {
         var @event = await Set<EventDto>().Where(e => e.EventType == typeof(T).FullName)
             .Select(e => e.Event)
+            .AsNoTracking()
             .FirstOrDefaultAsync();
 
         return @event == null ? null : JsonConvert.DeserializeObject<T>(@event);

@@ -15,6 +15,9 @@ public class MassTransitPublisher : IMassTransitPublisher
 
     public async Task Publish<TEvent>(TEvent message) where TEvent : Event
     {
-        await _publishEndpoint.Publish(message, x => { x.SetRoutingKey("Stm.RideTrackingUpdated"); });
+        await _publishEndpoint.Publish(message, x =>
+        {
+            x.SetRoutingKey("Stm.RideTrackingUpdated");
+        });
     }
 }

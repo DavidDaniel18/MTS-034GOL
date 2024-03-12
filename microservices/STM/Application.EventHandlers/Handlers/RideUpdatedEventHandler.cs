@@ -25,13 +25,13 @@ public class RideUpdatedEventHandler : IDomainEventHandler<RideTrackingUpdated>
             domainEvent.Message,
             domainEvent.TrackingCompleted,
             domainEvent.Duration,
-            domainEvent.delta,
+            domainEvent.Delta,
             Guid.NewGuid(),
             _datetimeProvider.GetCurrentTime());
 
-        await _eventContext.AddOrUpdateAsync(applicationEvent);
-
         //decoupling the domain event from the infrastructure
         await _eventPublisher.Publish(applicationEvent);
+
+        await _eventContext.AddOrUpdateAsync(applicationEvent);
     }
 }

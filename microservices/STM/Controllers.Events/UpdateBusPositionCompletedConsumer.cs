@@ -3,7 +3,6 @@ using Application.Commands.UpdateRidesTracking;
 using Application.EventHandlers.Interfaces;
 using Contracts;
 using MassTransit;
-using MassTransit.Contracts;
 
 namespace Controllers.Events;
 
@@ -15,7 +14,6 @@ public sealed class UpdateBusPositionCompletedConsumer(ICommandDispatcher comman
 
         if(lastUpdate!.Id.Equals(context.Message.Id) is false) return;
 
-        // 35 is a heuristic, but it should be exact
         var delta = 50 - (DateTime.UtcNow - context.Message.Delta).TotalMilliseconds;
 
         var delay = delta > 0 ? delta : 0;

@@ -1,5 +1,6 @@
 ﻿using Domain.Aggregates.Bus;
 using Domain.Aggregates.Ride;
+using Domain.Aggregates.Ride.Events;
 using Domain.Aggregates.Trip;
 using Domain.Common.Interfaces;
 using Domain.Factories;
@@ -20,11 +21,11 @@ public class RideServices
         return RideFactory.Create(bus.Id, trip.GetStopIdByIndex(bus.CurrentStopIndex), departureId, destinationId, _datetimeProvider);
     }
 
-    public void UpdateRide(Ride ride, Bus bus, Trip trip, DateTime commandDelta)
+    public RideTrackingUpdated UpdateRide(Ride ride, Bus bus, Trip trip, DateTime commandDelta)
     {
         trip.ValidateStopIndex(bus.CurrentStopIndex);
 
-        ride.UpdateRide(
+        return ride.UpdateRide(
             new RideUpdateInfo(
                 trip.GetIndexOfStop(ride.FirstRecordedStopId),
                 bus.CurrentStopIndex,

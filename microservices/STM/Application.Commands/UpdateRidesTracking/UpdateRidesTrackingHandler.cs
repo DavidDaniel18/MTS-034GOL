@@ -1,6 +1,8 @@
 ﻿using Application.Commands.Seedwork;
 using Application.CommandServices.Repositories;
+using Domain.Aggregates.Ride.Events;
 using Domain.Common.Exceptions;
+using Domain.Common.Interfaces.Events;
 using Domain.Services.Aggregates;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +16,7 @@ public class UpdateRidesTrackingHandler : ICommandHandler<UpdateRidesTrackingCom
     private readonly ITripWriteRepository _tripRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly RideServices _rideServices;
+    private readonly IDomainEventHandler<RideTrackingUpdated> _domainEventHandler;
 
     public UpdateRidesTrackingHandler(
         IRideWriteRepository rideRepository,
@@ -21,6 +24,7 @@ public class UpdateRidesTrackingHandler : ICommandHandler<UpdateRidesTrackingCom
         ITripWriteRepository tripRepository,
         IUnitOfWork unitOfWork,
         RideServices rideServices,
+        IDomainEventHandler<RideTrackingUpdated> domainEventHandler,
         ILogger<UpdateRidesTrackingHandler> logger)
     {
         _rideRepository = rideRepository;
@@ -28,6 +32,7 @@ public class UpdateRidesTrackingHandler : ICommandHandler<UpdateRidesTrackingCom
         _tripRepository = tripRepository;
         _unitOfWork = unitOfWork;
         _rideServices = rideServices;
+        _domainEventHandler = domainEventHandler;
         _logger = logger;
     }
 
@@ -45,7 +50,10 @@ public class UpdateRidesTrackingHandler : ICommandHandler<UpdateRidesTrackingCom
 
                     var trip = await _tripRepository.GetAsync(bus.TripId);
 
-                    _rideServices.UpdateRide(ride, bus, trip, command.Delta);
+                    var update = _rideServices.UpdateRide(ride, bus, trip, command.Delta);
+
+                    // yes this is horrible but it's a proof of concept im sorry
+                    await _domainEventHandler.HandleAsync(update);
                 }
                 catch (Exception e) when(e is IndexOutsideOfTripException or KeyNotFoundException)
                 {

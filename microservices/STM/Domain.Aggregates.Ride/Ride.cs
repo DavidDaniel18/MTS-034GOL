@@ -32,7 +32,7 @@ public sealed class Ride : Aggregate<Ride>
 
     public DateTime? DepartureReachedTime { get; private set; }
 
-    public void UpdateRide(RideUpdateInfo rideUpdateInfo, IDatetimeProvider datetimeProvider, DateTime delta)
+    public RideTrackingUpdated UpdateRide(RideUpdateInfo rideUpdateInfo, IDatetimeProvider datetimeProvider, DateTime delta)
     {
         if(TrackingComplete) throw new InvalidOperationException("Tracking is already complete");
 
@@ -48,7 +48,7 @@ public sealed class Ride : Aggregate<Ride>
 
         var trackingUpdatedEvent = new RideTrackingUpdated(message, TrackingComplete, _trackingStrategy.GetDuration(), delta);
 
-        RaiseDomainEvent(trackingUpdatedEvent);
+        return trackingUpdatedEvent;
     }
 
     public void CompleteTracking(IDatetimeProvider datetimeProvider)
