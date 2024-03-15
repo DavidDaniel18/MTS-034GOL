@@ -58,7 +58,7 @@ services:
       - '32773:8080'
     labels:
       ARTIFACT_CATEGORY: Computation
-      Replicas: TripComparator, TripComparator2, TripComparator3
+      Replicas: TripComparator, TripComparator2
       SHARE_VOLUMES: True
     volumes:
       - "trip-file-mem:/app/data"
@@ -82,6 +82,6 @@ services:
       - '32774:8080'
     labels:
       ARTIFACT_CATEGORY: Computation
-      Replicas: STM, STM2, STM3
+      Replicas: STM, STM2
 volumes:
   trip-file-mem: null

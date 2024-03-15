@@ -6,7 +6,12 @@ using Domain.Factories;
 
 namespace Application.Mapping;
 
-public class TripMapper : IMappingTo<IEnumerable<ScheduledStopDto>, Trip>, IMappingTo<Trip, IEnumerable<ScheduledStopDto>>, IMappingTo<ITripWrapper, Trip>
+public class TripMapper : 
+    IMappingTo<IEnumerable<ScheduledStopDto>, Trip>,
+    IMappingTo<Trip, IEnumerable<ScheduledStopDto>>, 
+    IMappingTo<ITripWrapper, Trip>, 
+    IMappingTo<TripDto, Trip>,
+    IMappingTo<Trip, TripDto>
 {
     public Trip MapFrom(IEnumerable<ScheduledStopDto> dtos)
     {
@@ -45,4 +50,29 @@ public class TripMapper : IMappingTo<IEnumerable<ScheduledStopDto>, Trip>, IMapp
         return TripFactory.Create(tripId, scheduledStops);
     }
 
+    public Trip MapFrom(TripDto dto)
+    {
+        var scheduledStops = dto.ScheduledStops
+            .Select(scheduledStopDto => (scheduledStopDto.Id, scheduledStopDto.StopId, scheduledStopDto.DepartureTimespan))
+            .ToList();
+
+        return TripFactory.Create(dto.Id, scheduledStops);
+    }
+
+    TripDto IMappingTo<Trip, TripDto>.MapFrom(Trip dto)
+    {
+        return new TripDto
+        {
+            Id = dto.Id,
+            ScheduledStops = dto.ScheduledStops
+                .Select((scheduledStop, i) => 
+                    new ScheduledStopDto(
+                        scheduledStop.Id,
+                        scheduledStop.StopId,
+                        dto.Id,
+                        scheduledStop.ScheduledDepartureTime,
+                        i))
+                .ToList()
+        };
+    }
 }

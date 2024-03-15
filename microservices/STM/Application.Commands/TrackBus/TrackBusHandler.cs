@@ -1,5 +1,9 @@
 ﻿using Application.Commands.Seedwork;
 using Application.CommandServices.Repositories;
+using Application.Dtos;
+using Application.EventHandlers.Interfaces;
+using Application.Mapping.Interfaces;
+using Domain.Aggregates.Trip;
 using Domain.Services.Aggregates;
 using Microsoft.Extensions.Logging;
 
@@ -9,6 +13,8 @@ public class TrackBusHandler : ICommandHandler<TrackBusCommand>
 {
     private readonly IBusWriteRepository _busRepository;
     private readonly RideServices _domainRideServices;
+    private readonly IEventContext _eventContext;
+    private readonly IMappingTo<Trip, TripDto> _tripMapper;
     private readonly ILogger<TrackBusHandler> _logger;
     private readonly IRideWriteRepository _rideRepository;
     private readonly ITripWriteRepository _tripRepository;
@@ -20,6 +26,8 @@ public class TrackBusHandler : ICommandHandler<TrackBusCommand>
         IBusWriteRepository busRepository,
         IUnitOfWork unitOfWork,
         RideServices domainRideServices,
+        IEventContext eventContext,
+        IMappingTo<Trip, TripDto> tripMapper,
         ILogger<TrackBusHandler> logger)
     {
         _tripRepository = tripRepository;
@@ -27,6 +35,8 @@ public class TrackBusHandler : ICommandHandler<TrackBusCommand>
         _busRepository = busRepository;
         _unitOfWork = unitOfWork;
         _domainRideServices = domainRideServices;
+        _eventContext = eventContext;
+        _tripMapper = tripMapper;
         _logger = logger;
     }
 
@@ -45,6 +55,10 @@ public class TrackBusHandler : ICommandHandler<TrackBusCommand>
                 command.ScheduledDestinationId);
 
             await _rideRepository.AddOrUpdateAsync(ride);
+
+            var tripDto = _tripMapper.MapFrom(trip);
+
+            await _eventContext.AddOrUpdateAsync(tripDto);
 
             await _unitOfWork.SaveChangesAsync();
         }

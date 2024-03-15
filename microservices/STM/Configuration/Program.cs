@@ -261,7 +261,7 @@ public class Program
                 cfg.Host($"rabbitmq://{routingData.Host}:{routingData.Port}", c =>
                 {
                     c.RequestedConnectionTimeout(100);
-                    c.Heartbeat(TimeSpan.FromMilliseconds(10));
+                    c.Heartbeat(TimeSpan.FromMilliseconds(25));
                     c.PublisherConfirmation = true;
                 });
 
@@ -283,6 +283,8 @@ public class Program
                     
                     endpoint.SingleActiveConsumer = true;
                     endpoint.PrefetchCount = 1;
+
+                    endpoint.UseMessageRetry(r => r.Immediate(int.MaxValue));
                 });
 
                 cfg.Publish<ApplicationRideTrackingUpdated>(p => p.ExchangeType = ExchangeType.Topic);

@@ -14,7 +14,7 @@ public sealed class UpdateBusPositionCompletedConsumer(ICommandDispatcher comman
 
         if(lastUpdate!.Id.Equals(context.Message.Id) is false) return;
 
-        var delta = 50 - (DateTime.UtcNow - context.Message.Delta).TotalMilliseconds;
+        var delta = 48 - (DateTime.UtcNow - context.Message.Delta).TotalMilliseconds;
 
         var delay = delta > 0 ? delta : 0;
 

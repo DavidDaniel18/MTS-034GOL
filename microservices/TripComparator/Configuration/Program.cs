@@ -94,7 +94,7 @@ namespace Configuration
                     cfg.Host($"rabbitmq://{ routingData.Host }:{routingData.Port}", c =>
                     {
                         c.RequestedConnectionTimeout(100);
-                        c.Heartbeat(TimeSpan.FromMilliseconds(10));
+                        c.Heartbeat(TimeSpan.FromMilliseconds(25));
                         c.PublisherConfirmation = true;
                     });
 
@@ -116,7 +116,8 @@ namespace Configuration
 
                         endpoint.ConfigureConsumer<RideTrackingUpdatedMqController>(context);
 
-                        endpoint.SingleActiveConsumer = true;
+                        //endpoint.SingleActiveConsumer = true;
+                        endpoint.UseMessageRetry(r => r.Immediate(int.MaxValue));
                     });
 
                     cfg.ReceiveEndpoint(uniqueQueueName + "Coordinate_Message", endpoint =>
@@ -132,6 +133,8 @@ namespace Configuration
                         endpoint.ConfigureConsumer<TripComparatorMqController>(context);
 
                         endpoint.SingleActiveConsumer = true;
+
+                        endpoint.UseMessageRetry(r => r.Immediate(int.MaxValue));
                     });
 
                     cfg.Publish<BusPositionUpdated>(p => p.ExchangeType = ExchangeType.Topic);

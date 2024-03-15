@@ -21,17 +21,17 @@ public sealed class EventDbContext : DbContext, IEventContext
         });
     }
 
-    public async Task<T?> TryGetAsync<T>() where T : Event
+    public async Task<T?> TryGetAsync<T>()
     {
         var @event = await Set<EventDto>().Where(e => e.EventType == typeof(T).FullName)
             .Select(e => e.Event)
             .AsNoTracking()
             .FirstOrDefaultAsync();
 
-        return @event == null ? null : JsonConvert.DeserializeObject<T>(@event);
+        return @event == null ? default : JsonConvert.DeserializeObject<T>(@event);
     }
 
-    public async Task AddOrUpdateAsync<T>(T @event) where T : Event
+    public async Task AddOrUpdateAsync<T>(T @event)
     {
         if (await Set<EventDto>().FindAsync(typeof(T).FullName) is {} eventDto)
         {
