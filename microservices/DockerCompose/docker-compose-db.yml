@@ -31,5 +31,50 @@ services:
       - '32572:5432'
     volumes:
       - 'stm-db:/var/lib/postgresql/data'
+
+  mariadb-galera-node:
+    hostname: mariadb-galera-node
+    container_name: mariadb-galera-node
+    build:
+      context: ../ClusterMariaDb/
+      dockerfile: Dockerfile   
+    environment:
+      - MARIADB_GALERA_CLUSTER_NAME=my_galera_cluster
+      - MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://mariadb-galera-node,mariadb-galera-node2,mariadb-galera-node3
+      - MARIADB_ROOT_PASSWORD=secret
+      - MARIADB_GALERA_MARIABACKUP_PASSWORD=secret
+      - ID=mariadb-galera-node
+    ports:
+      - '3306:3306'
+      - "4567:4567"
+      - "4568:4568"
+      - "4444:4444"
+    labels:
+      Artifact_Category: Database
+      Replicas: mariadb-galera-node
+    volumes:
+      - 'mariadb-galera-initialization:/bitnami/mariadb/init'
+
+  mariadb-galera-node2:
+    hostname: mariadb-galera-node2
+    container_name: mariadb-galera-node2
+    image: 'bitnami/mariadb-galera:latest'
+    environment:
+      - MARIADB_GALERA_CLUSTER_NAME=my_galera_cluster
+      - MARIADB_GALERA_CLUSTER_ADDRESS=gcomm://mariadb-galera-node,mariadb-galera-node2,mariadb-galera-node3
+      - MARIADB_ROOT_PASSWORD=secret
+      - MARIADB_GALERA_MARIABACKUP_PASSWORD=secret
+      - ID=mariadb-galera-node
+    ports:
+      - "3307:3306"
+      - "4570:4567"
+      - "4571:4568"
+      - "4445:4444"
+    labels:
+      Artifact_Category: Database
+      Replicas: mariadb-galera-node2
+    depends_on: 
+      - mariadb-galera-node
 volumes:
   stm-db: null
+  mariadb-galera-initialization: null
